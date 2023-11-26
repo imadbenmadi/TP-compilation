@@ -1,5 +1,4 @@
 import java.awt.*;
-import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
@@ -8,8 +7,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import javax.swing.JOptionPane;
 import javax.swing.JFileChooser;
-import java.util.ArrayList;
 import java.awt.Font;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class NewJFrame extends javax.swing.JFrame {
     private IterationFrame iterationFrame;
@@ -20,14 +22,6 @@ public class NewJFrame extends javax.swing.JFrame {
         output.setFont(customFont);
         setSize(1280, 700);
         jButton1.setAlignmentX(Component.CENTER_ALIGNMENT);
-        input.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
-                    ActionEvent actionEvent = new ActionEvent(input, ActionEvent.ACTION_PERFORMED, "Enter");
-                    jButton1ActionPerformed(actionEvent);
-                }
-            }
-        });
         iterationFrame = new IterationFrame();
     }
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {
@@ -40,7 +34,7 @@ public class NewJFrame extends javax.swing.JFrame {
         int rows = 2; // Number of products
         int columns = 2; // Number of transactions
         String input_text = input.getText();
-
+        input_text = input_text.replaceAll("\\n", "\\\\n");
         // Declare the transaction matrix
         String[][] transactionMatrix = new String[rows][columns];
 
@@ -53,23 +47,29 @@ public class NewJFrame extends javax.swing.JFrame {
 
         int i = 0;
 
-        while (current_state < rows && i <= input_text.length()) {
-            char tc = i == input_text.length() ? '#' : input_text.charAt(i);
+        while (current_state < rows && i < input_text.length()) {
+            char tc = input_text.charAt(i);
             char current_char = (char) (tc == 'a' ? 1 : 0);
 
             // Append the iteration information to the IterationFrame
             String iterationInfo = String.format("Iteration %d) Ec = %s | tc = %c | String = %s",
-                    i, transactionMatrix[current_state][0], tc, input_text.substring(i));
+                    i, transactionMatrix[current_state][current_char], tc, input_text.substring(i));
             iterationFrame.appendIteration(iterationInfo);
 
             // Move to the next state
             String next_state = transactionMatrix[current_state][current_char];
             current_state = Integer.parseInt(next_state.substring(1)); // Assuming state names are like "S0", "S1", etc.
 
-            // Move to the next character in the input string
             i++;
         }
+
+        // Append the final iteration when the end of the string is reached
+        if (i == input_text.length()) {
+            String iterationInfo = String.format("Iteration %d) Ec = %s | tc = # | String = ", i, transactionMatrix[current_state][0]);
+            iterationFrame.appendIteration(iterationInfo);
+        }
     }
+
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {
         output.setText("");
         String input_text = input.getText();
@@ -77,16 +77,17 @@ public class NewJFrame extends javax.swing.JFrame {
             output.setText("Error: Input is empty");
             return;
         }
-        if(input_text.equals("(") || input_text.equals(")") || input_text.equals(",") || input_text.equals(";") ||
-                input_text.equals(".") ){
-            output.setText("True : Separatore");
+        List<String> tokens = separateStrings(input_text);
+
+        if (tokens == null) {
+            // An error occurred in the string separation method
             return;
         }
-
 
         int rows = 8;
         int columns = 8;
         String[][] transactionMatrix = new String[rows][columns];
+
         // [State][Character]
         // State: 0=> S0 , 1=> S1
         // Character:
@@ -100,14 +101,11 @@ public class NewJFrame extends javax.swing.JFrame {
         transactionMatrix[0][3] = "S3";
         transactionMatrix[0][4] = "S4";
         transactionMatrix[0][5] = "S5";
-
-
         // Character:
         // 3=>" = "
         transactionMatrix[2][3] = "S3";
 
         transactionMatrix[4][4] = "S4"; // Transition for digits (1-9)
-
 
         transactionMatrix[5][5] = "S5";
         transactionMatrix[5][6] = "S6"; // Transition for digits after letters
@@ -116,112 +114,64 @@ public class NewJFrame extends javax.swing.JFrame {
         transactionMatrix[6][5] = "S5"; // Transition for digits after letters
         transactionMatrix[6][4] = "S5"; // Transition for digits after letters
 
-
-        int current_state = 0; // Initialize the current state
-        int i = 0;
+        int current_state;
         int current_char;
-        while (current_state < rows && i < input_text.length()) {
-            char tc = input_text.charAt(i);
-            if (tc == ':')
-                current_char = 2;
-            else if (tc == '+' || tc == '=' || tc == '/' || tc == '-')
-                current_char = 3;
-            else if (Character.isDigit(tc))
-                current_char = 4;
-            else if (Character.isLowerCase(tc) || Character.isUpperCase(tc))
-                current_char = 5 ;
-            else if (tc == '_')
-                current_char = 6;
-            else {
-                output.setText("Error: Symbol '" + tc + "' does not belong to the Language");
+
+        // Iterate through each token and test against the automaton
+        for (String token : tokens) {
+            current_state = 0;
+            int i = 0;
+
+            for (char tc : token.toCharArray()) {
+                if (tc == ':')
+                    current_char = 2;
+                else if (tc == '+' || tc == '=' || tc == '/' || tc == '-')
+                    current_char = 3;
+                else if (Character.isDigit(tc))
+                    current_char = 4;
+                else if (Character.isLowerCase(tc) || Character.isUpperCase(tc))
+                    current_char = 5 ;
+                else if (tc == '_')
+                    current_char = 6;
+                else {
+                    output.append("Error: Symbol '" + tc + "' does not belong to the Language in token '" + token + "'");
+                    return;
+                }
+
+                String next_state = transactionMatrix[current_state][current_char];
+                if (next_state == null) {
+                    output.append("Error: No transition defined for state " + current_state +
+                            " and character '" + tc + "' in token '" + token + "'");
+                    return;
+                }
+
+                current_state = Integer.parseInt(next_state.substring(1));
+                i++;
+            }
+            output.append("\n");
+
+            // Les Etets Finall
+            if (current_state == 2) {
+                output.append("True : Separatore  " + token + "\n");
+            } else if (current_state == 3) {
+                output.append("True : Operatore  " + token + "\n");
+            } else if (current_state == 4) {
+                output.append("True : Constant  " + token + "\n");
+            } else if (current_state == 5) {
+                output.append("True : Identifier  " + token + "\n");
+            } else if (current_state == 6) {
+                output.append("False : Identifiers Cannot End With '_' - " + token + "\n");
+                return;
+            } else {
+                output.append("False : " + token + "\n");
                 return;
             }
-
-            String next_state = transactionMatrix[current_state][current_char];
-            if (next_state == null) {
-                output.setText("Error: No transition defined for state " + current_state + " and character '" + tc + "'");
-                return;
-            }
-
-            current_state = Integer.parseInt(next_state.substring(1));
-            i++;
-        }
-
-        // Les Etets Finall
-        if (current_state == 2) {
-            output.setText("True : Separatore");
-            jButton2.setEnabled(true);}
-        else if (current_state == 3) {
-            output.setText("True : Operatore");
-            jButton2.setEnabled(true);
-        }
-        else if (current_state == 4) {
-            output.setText("True : Constant");
-            jButton2.setEnabled(true);
-        }
-        else if (current_state == 5) {
-            output.setText("True : Identifier");
-            jButton2.setEnabled(true);
-        }
-        else if (current_state == 6) {
-            output.setText("flase : Identifiers Cannot Ends With _");
-            jButton2.setEnabled(false);
-        }
-         else {
-            output.setText("False");
-            jButton2.setEnabled(false);
         }
     }
-    private void jButton1ActionPerformedAB(java.awt.event.ActionEvent evt) {
+    private List<String> separateStrings(String inp) {
         output.setText("");
-        String input_text = input.getText();
-
-        int rows = 2;
-        int columns = 2;
-        String[][] transactionMatrix = new String[rows][columns];
-        // [State][Character]
-        // State: 0=> S0 , 1=> S1
-        // Character: 0=> a , 1=> b
-        transactionMatrix[0][0] = "S1";
-        transactionMatrix[0][1] = "S0";
-        transactionMatrix[1][0] = "S1";
-        transactionMatrix[1][1] = "S0";
-
-        int current_state = 0; // Initialize the current state
-        int i = 0;
-        int current_char;
-        while (current_state < rows && i < input_text.length()) {
-            char tc = input_text.charAt(i);
-            if (tc == 'a')
-                current_char = 0;
-            else if (tc == 'b')
-                current_char = 1;
-            else {
-                output.setText("Error, Symbols do not belong to the Language");
-                return;
-            }
-            String next_state = transactionMatrix[current_state][current_char];
-            current_state = Integer.parseInt(next_state.substring(1)); // Assuming state names are like "S0", "S1", etc.
-            i++;
-        }
-
-        if (current_state != 1) { // L'etat Final est S1
-            output.setText("String does not belong to the Language");
-            jButton2.setEnabled(false);
-        } else {
-            output.setText("True");
-            jButton2.setEnabled(true);
-        }
-    }
-
-
-
-
-
-
-    private void jButton1ActionPerformedSeparation(java.awt.event.ActionEvent evt) {
-        output.setText("");
-        String input_text = input.getText();
+        inp = inp.replaceAll("\n", "#");
+        String input_text = inp;
 
         boolean insideComment = false;
         // Remove Comments
@@ -234,7 +184,7 @@ public class NewJFrame extends javax.swing.JFrame {
         }
         if (insideComment){
             output.setText("error: Close the comments please !");
-            return;
+            return null;
         }
         //make the output without comments in variable outputText
         // ( ) = ; [ ] + - / * :
@@ -242,6 +192,7 @@ public class NewJFrame extends javax.swing.JFrame {
         //the result Container
         StringBuilder result = new StringBuilder();
         String input = outputText.toString();
+
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
             if (c != ' ' && c != '(' && c!=')' && c != '[' && c!=']' && c!= '=' && c!=';' && c!=':'&& c!='.'&& c!='-' &&
@@ -306,8 +257,16 @@ public class NewJFrame extends javax.swing.JFrame {
                 }
             }
         }
-        output.setText(result.toString());
+        String[] tokens = result.toString().split("#");
+
+        // Remove empty strings
+        List<String> nonEmptyTokens = Arrays.stream(tokens)
+                .filter(token -> !token.isEmpty())
+                .collect(Collectors.toList());
+
+        return nonEmptyTokens;
     }
+
 
 
 
