@@ -80,12 +80,11 @@ public class NewJFrame extends javax.swing.JFrame {
         List<String> tokens = separateStrings(input_text);
 
         if (tokens == null) {
-            // An error occurred in the string separation method
             return;
         }
 
-        int rows = 8;
-        int columns = 8;
+        int rows = 10;
+        int columns = 10;
         String[][] transactionMatrix = new String[rows][columns];
 
         // [State][Character]
@@ -96,6 +95,8 @@ public class NewJFrame extends javax.swing.JFrame {
         // 3=> "+ / - ="
         // 4=>"1-9"
         // 5=>"a-z"
+        // 6=>" _ "
+        // 7=>" . "
         transactionMatrix[0][1] = "S1";
         transactionMatrix[0][2] = "S2";
         transactionMatrix[0][3] = "S3";
@@ -105,71 +106,137 @@ public class NewJFrame extends javax.swing.JFrame {
         // 3=>" = "
         transactionMatrix[2][3] = "S3";
 
-        transactionMatrix[4][4] = "S4"; // Transition for digits (1-9)
+        transactionMatrix[4][4] = "S4";
+        transactionMatrix[4][7] = "S7";
+        transactionMatrix[7][4] = "S4";
 
         transactionMatrix[5][5] = "S5";
-        transactionMatrix[5][6] = "S6"; // Transition for digits after letters
-        transactionMatrix[5][4] = "S5"; // Transition for underscore after letters
+        transactionMatrix[5][6] = "S6";
+        transactionMatrix[5][4] = "S5";
 
-        transactionMatrix[6][5] = "S5"; // Transition for digits after letters
-        transactionMatrix[6][4] = "S5"; // Transition for digits after letters
+        transactionMatrix[6][5] = "S5";
+        transactionMatrix[6][4] = "S5";
+        transactionMatrix[6][6] = "S6";
+        /*
+        System.out.println("Transaction Matrix:");
+        System.out.print("State/Char\t");
+        for (int j = 0; j < columns; j++) {
+            System.out.printf("%-5d", j);
+        }
+        System.out.println();
 
+        for (int i = 0; i < rows; i++) {
+            System.out.printf("S%-2d\t\t", i);
+            for (int j = 0; j < columns; j++) {
+                System.out.printf("%-5s", transactionMatrix[i][j]);
+            }
+            System.out.println();
+        }*/
+
+        output.setText("Debugging Succesfully: All Entities Are True \n");
+        output.append("--------------------------------------------------------\n");
         int current_state;
         int current_char;
+        int pair_tirer;
+        int Points_Counter;
 
-        // Iterate through each token and test against the automaton
         for (String token : tokens) {
             current_state = 0;
             int i = 0;
-
+            pair_tirer = 0;
+            Points_Counter = 0;
             for (char tc : token.toCharArray()) {
-                if (tc == ':')
+                if (tc == '(' || tc == ')' || tc == ',' || tc == ';'|| (tc == '.' && current_state == 0 )  )
+                    current_char = 1;
+
+                else if (tc == ':')
                     current_char = 2;
                 else if (tc == '+' || tc == '=' || tc == '/' || tc == '-')
                     current_char = 3;
                 else if (Character.isDigit(tc))
                     current_char = 4;
-                else if (Character.isLowerCase(tc) || Character.isUpperCase(tc))
+                else if (Character.isLowerCase(tc))
                     current_char = 5 ;
-                else if (tc == '_')
-                    current_char = 6;
+                else if (tc == '_'){
+                    pair_tirer++;
+                    current_char = 6;}
+                else if (current_state == 4 && tc == '.' ){
+                    Points_Counter++;
+                    current_char = 7;
+                }
                 else {
-                    output.append("Error: Symbol '" + tc + "' does not belong to the Language in token '" + token + "'");
+                    output.setText("Error: Symbol '" + tc + "' does not belong to the Language in token '" + token + "'");
                     return;
                 }
 
                 String next_state = transactionMatrix[current_state][current_char];
                 if (next_state == null) {
-                    output.append("Error: No transition defined for state " + current_state +
-                            " and character '" + tc + "' in token '" + token + "'");
+                    output.setText("Error: token :'" + token + "'\nNo transition defined for state '" + current_state +
+                            "' and character '" + tc +  "'");
                     return;
                 }
 
                 current_state = Integer.parseInt(next_state.substring(1));
                 i++;
             }
-            output.append("\n");
+
 
             // Les Etets Finall
-            if (current_state == 2) {
-                output.append("True : Separatore  " + token + "\n");
+            if (current_state == 1) {
+                output.append("'"+ token +"'" +" : Terminal  \n");
+            }
+            else if (current_state == 2) {
+                output.append("'" + token +"'" + " : Separatore \n");
             } else if (current_state == 3) {
-                output.append("True : Operatore  " + token + "\n");
+                output.append("'" + token +"'" + " : Operatore\n");
             } else if (current_state == 4) {
-                output.append("True : Constant  " + token + "\n");
+                if(Points_Counter == 0){
+                    if (token.length() > 7) {
+                        output.setText("False : Constant Length Must Be Less than 7 Numbers  \n'" + token + "'\n");
+                    }
+                    else if(Integer.parseInt(token) > 1333634){
+                        output.setText("False : Constant Value '" + token + "'\nMust Be Less than 1333634 " +"\n");
+                    }
+                    else{
+                        output.append("'"+token+"'" + " : Constant \n");
+                    }
+                } else if (Points_Counter == 1) {
+                    if (token.length() > 9) {
+                        output.setText("False : Constant Length Must Be Less than 9 Numbers  \n'" + token + "'\n");
+                    }else{
+                        output.append("'" + token + "'"+ " : Constant Réel \n");
+                    }
+                }
+                else if(Points_Counter >1){
+                    output.setText("False : Constant Should contain only One Point  \n'" + token + "'\n");
+                }
+
             } else if (current_state == 5) {
-                output.append("True : Identifier  " + token + "\n");
+                if (token.length() > 6) {
+                    output.setText("False : Identifier Length Must Be Less than 6 Characters  \n'" + token + "'\n");
+                }
+                else if(pair_tirer != 0 && pair_tirer %2 == 0){
+                    output.setText("False : Identifier Must not contain Pair _\n'" + token + "'\n");
+                }
+                else {
+                    output.append("'" +token+ "'" + " : Identifier\n");
+                }
             } else if (current_state == 6) {
-                output.append("False : Identifiers Cannot End With '_' - " + token + "\n");
+                output.append("False : Identifiers Cannot End With _ \n'" + token + "'\n");
                 return;
-            } else {
-                output.append("False : " + token + "\n");
+            } else if (current_state == 7) {
+                output.append("False : Constant Cannot Ends With Point \n'" + token + "'\n");
+                return;
+            }
+            else {
+                output.setText("Error : '" + token + "' Does not Bellongs To the Language\n");
                 return;
             }
         }
     }
+
+
     private List<String> separateStrings(String inp) {
-        output.setText("");
         inp = inp.replaceAll("\n", "#");
         String input_text = inp;
 
@@ -183,76 +250,42 @@ public class NewJFrame extends javax.swing.JFrame {
             }
         }
         if (insideComment){
-            output.setText("error: Close the comments please !");
+            output.setText("Error: Close the comments please !");
             return null;
         }
-        //make the output without comments in variable outputText
-        // ( ) = ; [ ] + - / * :
+        // ( ) = ; + - / * :
         String outputText = output.getText();
-        //the result Container
+        output.setText("");
         StringBuilder result = new StringBuilder();
         String input = outputText.toString();
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
-            if (c != ' ' && c != '(' && c!=')' && c != '[' && c!=']' && c!= '=' && c!=';' && c!=':'&& c!='.'&& c!='-' &&
-                c != '/' && c!='*' && c!=','
+            if (c != ' ' && c != '(' && c!=')' && c!= '=' && c!=';'&& c!='.'&& c!='-' &&
+                    c != '/' && c!='*' && c!=','&& c!='+'
             ) {
-
-                if (c == '+') {
-                    if (input.charAt(i - 1) != '+'){
-                        result.append('#');
-                    }
-                    result.append('+');
-                    if (i + 1 < input.length() && input.charAt(i + 1) == '+'  ) {
-                        if(i + 2 < input.length() &&  input.charAt(i + 2) == '+'){
-                            result.append('+');
-                            result.append('#');
-                        }
-                        else{
-                            result.append('#');
-                            result.append('+');
-                        }
-                        i++;
-                    }else {
-                        result.append('#');
-                    }
-                } else  if (c == '<' ||  c=='>') {
-                    if (input.charAt(i - 1) != '#') {
-                        result.append('#');
-                    }
+                if (i + 1 < input.length() && c == ':' && input.charAt(i + 1) == '=') {
+                    result.append("#:=#");
+                    i++;
+                } else {
                     result.append(c);
-                    if (i + 1 < input.length() && input.charAt(i + 1) == '=' ) {
-                        result.append("=");
-                        result.append('#');
-                        i++;
-                    } else {
-                        result.append('#') ;
-                    }
-
-                }else {
-                    if (c != ' ') {
-                        result.append(c);
-                    }
                 }
-            }else {
+            } else {
                 if (c != ' ') {
                     // the number
-                    if (i+1<input.length() && Character.isDigit(input.charAt(i-1)) && Character.isDigit(input.charAt(i+1)) && c=='.' ) {
+                    if (i > 0 && i + 1 < input.length() && Character.isDigit(input.charAt(i - 1)) && Character.isDigit(input.charAt(i + 1)) && c == '.') {
                         result.append(c);
-                    }
-                    else{
-                    result.append("#");
-                    result.append(c);
-                    if (i + 1 < input.length() && input.charAt(i + 1) != c) {
+                    } else {
                         result.append("#");
-                    }
+                        result.append(c);
+                        //if (i + 1 < input.length() && input.charAt(i + 1) != c)
+                        result.append("#");
                     }
                 } else {
                     if (i + 1 < input.length() && input.charAt(i + 1) != c && !(c == '.' && Character.isDigit(input.charAt(i - 1)))) {
                         result.append("#");
                     } else {
-                        // handle other cases if needed
+                        result.append("#");
                     }
                 }
             }
@@ -263,9 +296,9 @@ public class NewJFrame extends javax.swing.JFrame {
         List<String> nonEmptyTokens = Arrays.stream(tokens)
                 .filter(token -> !token.isEmpty())
                 .collect(Collectors.toList());
-
         return nonEmptyTokens;
     }
+
 
 
 
@@ -339,7 +372,7 @@ public class NewJFrame extends javax.swing.JFrame {
         }
     }
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
     private void initComponents() {
         jComboBox1 = new javax.swing.JComboBox<>();
         jButton1 = new javax.swing.JButton();
@@ -381,13 +414,13 @@ public class NewJFrame extends javax.swing.JFrame {
             }
         });
 
-        input.setColumns(20);
-        input.setRows(5);
+        input.setColumns(25);
+        input.setRows(10);
         jScrollPane1.setViewportView(input);
         input.setLineWrap(true);
 
-        output.setColumns(20);
-        output.setRows(5);
+        output.setColumns(25);
+        output.setRows(10);
         jScrollPane2.setViewportView(output);
         output.setLineWrap(true);
         output.setEditable(false);
@@ -395,7 +428,7 @@ public class NewJFrame extends javax.swing.JFrame {
         jLabel1.setText("INPUT");
         jLabel2.setText("OUTPUT");
 
-        // Add jButton2 to the layout
+     
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
