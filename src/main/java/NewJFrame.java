@@ -1,14 +1,10 @@
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import javax.swing.JOptionPane;
-import javax.swing.JFileChooser;
+import javax.swing.*;
 import java.awt.Font;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -102,6 +98,10 @@ public class NewJFrame extends javax.swing.JFrame {
         transactionMatrix[0][3] = "S3";
         transactionMatrix[0][4] = "S4";
         transactionMatrix[0][5] = "S5";
+
+        // !=   ==   >= <= > <
+        transactionMatrix[0][8] = "S8";
+
         // Character:
         // 3=>" = "
         transactionMatrix[2][3] = "S3";
@@ -117,6 +117,9 @@ public class NewJFrame extends javax.swing.JFrame {
         transactionMatrix[6][5] = "S5";
         transactionMatrix[6][4] = "S5";
         transactionMatrix[6][6] = "S6";
+
+
+
         /*
         System.out.println("Transaction Matrix:");
         System.out.print("State/Char\t");
@@ -133,13 +136,13 @@ public class NewJFrame extends javax.swing.JFrame {
             System.out.println();
         }*/
 
-        output.setText("Debugging Succesfully: All Entities Are True \n");
+        output.setText("Debugging Succesfully: All Entities Are Correct \n");
         output.append("--------------------------------------------------------\n");
         int current_state;
         int current_char;
         int pair_tirer;
         int Points_Counter;
-
+        System.out.println(tokens);
         for (String token : tokens) {
             current_state = 0;
             int i = 0;
@@ -151,8 +154,24 @@ public class NewJFrame extends javax.swing.JFrame {
 
                 else if (tc == ':')
                     current_char = 2;
-                else if (tc == '+' || tc == '=' || tc == '/' || tc == '-')
+                else if((tc == '!' && i + 1 < token.length() && token.charAt(i + 1) == '=')||
+                        (tc == '=' && i + 1 < token.length() && token.charAt(i + 1) == '=') ||
+                        (tc == '>' && i + 1 < token.length() && token.charAt(i + 1) == '=') ||
+                        (tc == '<' && i + 1 < token.length() && token.charAt(i + 1) == '=') ||
+                        (tc == '<') || (tc == '>')
+
+                ) {
+                    current_state = 3;
+                    break;
+                } else if ((tc == '+' && i + 1 < token.length() && token.charAt(i + 1) == '+') ||
+                        (tc == '-' && i + 1 < token.length() && token.charAt(i + 1) == '-')) {
+                    current_state = 9;
+                    break;
+                }
+
+                else if (tc == '+' || tc == '='  || tc == '/' || tc == '-') {
                     current_char = 3;
+                }
                 else if (Character.isDigit(tc))
                     current_char = 4;
                 else if (Character.isLowerCase(tc))
@@ -164,18 +183,20 @@ public class NewJFrame extends javax.swing.JFrame {
                     Points_Counter++;
                     current_char = 7;
                 }
+
                 else {
-                    output.setText("Error: Symbol '" + tc + "' does not belong to the Language in token '" + token + "'");
+                    output.setText("False: Symbol '" + tc + "' does not belong to the Language in token '" + token + "'");
                     return;
                 }
-
+                // Pass To next State
                 String next_state = transactionMatrix[current_state][current_char];
+
+
                 if (next_state == null) {
-                    output.setText("Error: token :'" + token + "'\nNo transition defined for state '" + current_state +
+                    output.setText("Error: '" + token + "'\nNo transition defined for state '" + current_state +
                             "' and character '" + tc +  "'");
                     return;
                 }
-
                 current_state = Integer.parseInt(next_state.substring(1));
                 i++;
             }
@@ -183,12 +204,15 @@ public class NewJFrame extends javax.swing.JFrame {
 
             // Les Etets Finall
             if (current_state == 1) {
-                output.append("'"+ token +"'" +" : Terminal  \n");
+                output.append( token +"#" +" : Terminal  \n");
             }
-            else if (current_state == 2) {
-                output.append("'" + token +"'" + " : Separatore \n");
+            if (current_state == 9) {
+                output.append( token +"#" +" : Pas  \n");
+            }
+            else if (current_state == 2 || current_state == 8) {
+                output.append( token +"#" + " : Separatore \n");
             } else if (current_state == 3) {
-                output.append("'" + token +"'" + " : Operatore\n");
+                output.append(token +"#" + " : Operatore\n");
             } else if (current_state == 4) {
                 if(Points_Counter == 0){
                     if (token.length() > 7) {
@@ -198,13 +222,13 @@ public class NewJFrame extends javax.swing.JFrame {
                         output.setText("False : Constant Value '" + token + "'\nMust Be Less than 1333634 " +"\n");
                     }
                     else{
-                        output.append("'"+token+"'" + " : Constant \n");
+                        output.append(token+"#" + " : Constant \n");
                     }
                 } else if (Points_Counter == 1) {
                     if (token.length() > 9) {
                         output.setText("False : Constant Length Must Be Less than 9 Numbers  \n'" + token + "'\n");
                     }else{
-                        output.append("'" + token + "'"+ " : Constant Réel \n");
+                        output.append(token + "#"+ " : Constant Réel \n");
                     }
                 }
                 else if(Points_Counter >1){
@@ -219,7 +243,7 @@ public class NewJFrame extends javax.swing.JFrame {
                     output.setText("False : Identifier Must not contain Pair _\n'" + token + "'\n");
                 }
                 else {
-                    output.append("'" +token+ "'" + " : Identifier\n");
+                    output.append(token+ "#" + " : Identifier\n");
                 }
             } else if (current_state == 6) {
                 output.append("False : Identifiers Cannot End With _ \n'" + token + "'\n");
@@ -228,8 +252,9 @@ public class NewJFrame extends javax.swing.JFrame {
                 output.append("False : Constant Cannot Ends With Point \n'" + token + "'\n");
                 return;
             }
+
             else {
-                output.setText("Error : '" + token + "' Does not Bellongs To the Language\n");
+                output.setText("False : '" + token + "' Does not Bellongs To the Language\n");
                 return;
             }
         }
@@ -253,7 +278,6 @@ public class NewJFrame extends javax.swing.JFrame {
             output.setText("Error: Close the comments please !");
             return null;
         }
-        // ( ) = ; + - / * :
         String outputText = output.getText();
         output.setText("");
         StringBuilder result = new StringBuilder();
@@ -261,24 +285,60 @@ public class NewJFrame extends javax.swing.JFrame {
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
-            if (c != ' ' && c != '(' && c!=')' && c!= '=' && c!=';'&& c!='.'&& c!='-' &&
-                    c != '/' && c!='*' && c!=','&& c!='+'
+            if (c != ' ' && c != '(' && c!=')'  && c!=';'&& c!='.' &&
+                    c != '/' && c!='*' && c!=','
             ) {
-                if (i + 1 < input.length() && c == ':' && input.charAt(i + 1) == '=') {
+                if (i + 1 < input.length() && c == '+' && input.charAt(i + 1) == '+') {
+                    result.append("#++#");
+                    i++;
+                }
+                else if (i + 1 < input.length() && c == '-' && input.charAt(i + 1) == '-') {
+                    result.append("#--#");
+                    i++;
+                }
+                else if (i + 1 < input.length() && c == ':' && input.charAt(i + 1) == '=') {
                     result.append("#:=#");
                     i++;
-                } else {
+                }
+                else if (c == ':' ) {
+                    result.append("#:#");
+                }
+                else if (i + 1 < input.length() && c == '!' && input.charAt(i + 1) == '=') {
+                    result.append("#!=#");
+                    i++;
+                }
+                else if (c == '>') {
+                    if (i + 1 < input.length() && input.charAt(i + 1) == '=') {
+                        result.append("#>=#");
+                        i++;
+                    } else {
+                        result.append("#>#");
+                    }
+                }
+                else if (c == '<') {
+                    if (i + 1 < input.length() && input.charAt(i + 1) == '=') {
+                        result.append("#<=#");
+                        i++;
+                    } else {
+                        result.append("#<#");
+                    }
+                }
+                else if (c=='=' && i + 1 < input.length() && input.charAt(i + 1) == '=') {
+                    result.append("#==#");
+                    i++;
+                }
+                else {
                     result.append(c);
                 }
             } else {
                 if (c != ' ') {
                     // the number
-                    if (i > 0 && i + 1 < input.length() && Character.isDigit(input.charAt(i - 1)) && Character.isDigit(input.charAt(i + 1)) && c == '.') {
+                    if (i > 0 && i + 1 < input.length() && Character.isDigit(input.charAt(i - 1)) &&
+                            Character.isDigit(input.charAt(i + 1)) && c == '.') {
                         result.append(c);
                     } else {
                         result.append("#");
                         result.append(c);
-                        //if (i + 1 < input.length() && input.charAt(i + 1) != c)
                         result.append("#");
                     }
                 } else {
@@ -321,8 +381,6 @@ public class NewJFrame extends javax.swing.JFrame {
 
                 bufferedReader.close();
 
-                // Display the contents of the text file (you can modify this part)
-                //JOptionPane.showMessageDialog(this, "File Contents:\n" + fileContents.toString());
                 input.setText(String.valueOf(fileContents));
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -332,27 +390,17 @@ public class NewJFrame extends javax.swing.JFrame {
     }
     private void saveTextFile() {
         JFileChooser fileChooser = new JFileChooser();
-
         int result = fileChooser.showSaveDialog(this);
-
         if (result == JFileChooser.APPROVE_OPTION) {
             try {
-                // Get the selected file
                 File file = fileChooser.getSelectedFile();
-
-                // Ensure the file has a .txt extension
                 if (!file.getName().toLowerCase().endsWith(".txt")) {
                     file = new File(file.toString() + ".txt");
                 }
-
-                // Get the contents of the output text area
                 String content = output.getText();
-
-                // Write the contents to the selected file
                 try (FileWriter fileWriter = new FileWriter(file)) {
                     fileWriter.write(content);
                 }
-
                 JOptionPane.showMessageDialog(this, "File saved successfully!");
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -365,7 +413,8 @@ public class NewJFrame extends javax.swing.JFrame {
         input.setText("");
     }
     private void exitProgram() {
-        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to exit?", "Confirm Exit", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to exit?",
+                "Confirm Exit", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
             System.exit(0); // Exit the program
@@ -373,8 +422,42 @@ public class NewJFrame extends javax.swing.JFrame {
     }
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
+
     private void initComponents() {
-        jComboBox1 = new javax.swing.JComboBox<>();
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        JMenuBar menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
+        JMenu fileMenu = new JMenu("File");
+        menuBar.add(fileMenu);
+        JMenuItem openMenuItem = new JMenuItem("Open");
+        JMenuItem saveMenuItem = new JMenuItem("Save");
+        JMenuItem removeMenuItem = new JMenuItem("Remove");
+        JMenuItem exitMenuItem = new JMenuItem("Exit");
+        fileMenu.add(openMenuItem);
+        fileMenu.add(saveMenuItem);
+        fileMenu.add(removeMenuItem);
+        fileMenu.add(exitMenuItem);
+        openMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                openTextFile();
+            }
+        });
+        saveMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveTextFile();
+            }
+        });
+        removeMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                removeTextFile();
+            }
+        });
+        exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exitProgram();
+            }
+        });
+
         jButton1 = new javax.swing.JButton();
         jButton2 = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -384,27 +467,17 @@ public class NewJFrame extends javax.swing.JFrame {
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{"Open", "Save", "Remove", "Exit"}));
-        jComboBox1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                //jComboBox1ActionPerformed(evt);
-            }
-        });
-
         jButton1.setBackground(new java.awt.Color(51, 255, 21));
         jButton1.setText("Analyse");
-        jButton1.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 14)); // Set font and size
-        jButton1.setForeground(new java.awt.Color(255, 255, 255)); // Set text color
+        jButton1.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 14));
+        jButton1.setForeground(new java.awt.Color(255, 255, 255));
         jButton1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton1ActionPerformed(evt);
             }
         });
 
-        //JButton jButton2 = new JButton();
-        jButton2.setBackground(new java.awt.Color(255, 51, 51)); // Change the color
+        jButton2.setBackground(new java.awt.Color(255, 51, 51));
         jButton2.setText("Show Iterations");
         jButton2.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 14));
         jButton2.setForeground(new java.awt.Color(255, 255, 255));
@@ -428,7 +501,6 @@ public class NewJFrame extends javax.swing.JFrame {
         jLabel1.setText("INPUT");
         jLabel2.setText("OUTPUT");
 
-     
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -450,13 +522,13 @@ public class NewJFrame extends javax.swing.JFrame {
                                                 .addComponent(jLabel2)
                                                 .addGap(164, 164, 164))
                                         .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                                .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE) // Adjust size as needed
+                                                .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addGap(25, 25, 25))))
                         .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                         .addGroup(layout.createSequentialGroup()
                                                 .addContainerGap()
-                                                .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addComponent(menuBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)) // Add the menu bar
                                         .addGroup(layout.createSequentialGroup()
                                                 .addGap(352, 352, 352)
                                                 .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -467,7 +539,7 @@ public class NewJFrame extends javax.swing.JFrame {
                 layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                         .addGroup(layout.createSequentialGroup()
                                 .addContainerGap()
-                                .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(menuBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE) // Add the menu bar
                                 .addGap(39, 39, 39)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel2)
@@ -478,13 +550,13 @@ public class NewJFrame extends javax.swing.JFrame {
                                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 216, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addGap(48, 48, 48)
                                 .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                //.addGap(10, 10, 10)
                                 .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addContainerGap(55, Short.MAX_VALUE))
         );
 
         pack();
     }
+
 
 
 
